@@ -17,44 +17,65 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Install Chrome Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libgbm-dev libnss3 libgtk-3-0 libxss1 \
-            libasound2 fonts-liberation libdrm2 libxkbcommon0 \
-            libgl1-mesa-glx
+            libgbm-dev \
+            libnss3 \
+            libgtk-3-0 \
+            libxss1 \
+            libasound2 \
+            fonts-liberation \
+            libdrm2 \
+            libxkbcommon0 \
+            libxi6 \
+            libxcomposite1 \
+            libxcursor1
 
       - uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: 'npm'
 
-      - run: npm ci --production
+      - name: Install NPM Dependencies
+        run: npm ci --production
+
+      - name: Create Output Directory
+        run: mkdir -p out
 
       - name: Render Video
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
-          mkdir -p out
           npx remotion render src/index.js Main out/video.mp4 \
-            --props="${{ toJson(inputs) }}" \
+            --props="${{ toJson(inputs)}}" \
             --concurrency=2 \
             --quality=80 \
             --scale=0.8 \
-            --timeout=300000
+            --timeout=600000 \
+            --log=verbose || echo "Render failed but continuing"
+
+      - name: Verify Render Output
+        run: |
+          if [ ! -f out/video.mp4 ]; then
+            echo "::error::Video file not found!"
+            exit 1
+          fi
+          ls -lh out/video.mp4
 
       - name: Upload to Express Server
         run: |
-          curl -X POST \
-            -H "Authorization: Bearer Sumitsingh61220" \
+          curl -v -X POST \
+            -H "Authorization: Bearer ${{ secrets.API_KEY }}" \
             -F "video=@out/video.mp4" \
-            "http://localhost:4000/upload"
+            "http://localhost:4000/upload" || echo "Upload failed"

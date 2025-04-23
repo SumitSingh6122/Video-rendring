@@ -3,6 +3,22 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import express from 'express';
+import cors from 'cors';
+import fileUpload from 'express-fileupload';
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+  secure: true
+});
+
 
 dotenv.config();
 
@@ -27,6 +43,40 @@ const validateInput = (req, res, next) => {
   
   next();
 };
+app.use(fileUpload({
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+  abortOnLimit: true
+}));
+
+// Upload Endpoint
+app.post('/upload', async (req, res) => {
+  try {
+    if (!req.files?.video) {
+      return res.status(400).json({ error: 'No video file uploaded' });
+    }
+
+    const videoFile = req.files.video;
+    
+    const result = await cloudinary.uploader.upload(videoFile.tempFilePath, {
+      resource_type: "video",
+      folder: "renders",
+      overwrite: true
+    });
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+      duration: result.duration,
+      bytes: result.bytes
+    });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ 
+      error: 'Upload failed',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
 
 app.post('/trigger-render', validateInput, async (req, res) => {
   try {
