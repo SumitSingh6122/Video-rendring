@@ -87,7 +87,7 @@ app.post('/api/render', validateInput, async (req, res) => {
         headless: true,
         disableWebSecurity: true
       },
-      timeoutInMilliseconds: 300000
+      timeoutInMilliseconds: 1000000
     });
   
     // Upload to Cloudinary
