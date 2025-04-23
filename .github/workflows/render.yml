@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   actions: write
+  id-token: write  # Required for cloud authentication
 
 jobs:
   render:
@@ -52,12 +53,17 @@ jobs:
             --scale=0.8 \
             --timeout=300000
           
+      - name: Verify Output File
+        run: |
+          ls -lh out/
+          [ -f out/video.mp4 ] || exit 1
+          
       - name: Upload to Cloudinary
-        uses: jakejarvis/cloudinary-upload-action@v3 
+        uses: jakejarvis/cloudinary-upload-action@v3
         with:
-          cloud: ${{ secrets.CLOUDINARY_CLOUD }}
-          key: ${{ secrets.CLOUDINARY_API_KEY }}
-          secret: ${{ secrets.CLOUDINARY_API_SECRET }}
+          cloud_name: ${{ secrets.CLOUDINARY_CLOUD }}
+          api_key: ${{ secrets.CLOUDINARY_API_KEY }}
+          api_secret: ${{ secrets.CLOUDINARY_API_SECRET }}
           folder: renders
           files: out/video.mp4
-          upload_preset: unsigned 
+          upload_preset: unsigned
