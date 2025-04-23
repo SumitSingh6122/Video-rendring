@@ -1,0 +1,57 @@
+name: Video Render Pipeline
+on:
+  workflow_dispatch:
+    inputs:
+      audio:
+        description: 'Audio URL'
+        required: true
+      captions:
+        description: 'JSON array of captions'
+        required: true
+      images:
+        description: 'JSON array of image URLs'
+        required: true
+      captionStyle:
+        description: 'JSON caption styles'
+        required: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgbm-dev libnss3 libgtk-3-0 libxss1 \
+            libasound2 fonts-liberation libdrm2 libxkbcommon0
+          
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          
+      - run: npm ci --production
+      
+      - name: Render Video
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+        run: |
+          npx remotion render src/index.js Main out/video.mp4 \
+            --props="${{ toJson(inputs) }}" \
+            --concurrency=2 \
+            --quality=80 \
+            --scale=0.8 \
+            --timeout=300000
+          
+      - name: Upload to Cloudinary
+        uses: jakejarvis/cloudinary-action@v2
+        with:
+          cloud: ${{ secrets.CLOUDINARY_CLOUD }}
+          key: ${{ secrets.CLOUDINARY_KEY }}
+          secret: ${{ secrets.CLOUDINARY_SECRET }}
+          folder: renders
+          files: out/video.mp4

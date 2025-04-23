@@ -1,76 +1,47 @@
-"use client";
-import {
-  AbsoluteFill,
-  Audio,
-  Img,
-  Sequence,
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  getInputProps,
-} from "remotion";
 
-const RemotionComposition = () => {
-  const { fps } = useVideoConfig();
+import { AbsoluteFill, Audio, Img, Sequence, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+
+export const Main = () => {
+  const { fps, width, height } = useVideoConfig();
   const frame = useCurrentFrame();
-  const { videoData } = getInputProps();
+  const input = getInputProps();
   
-  const captions = videoData?.captionJson || [];
-  const images = videoData?.image || [];
-  const audioURL = videoData?.audioURL || "";
-  const captionStyle = videoData?.caption_Style || {};
+  // Parse inputs directly from workflow
+  const {
+    audio = '',
+    captions = [],
+    images = [],
+    captionStyle = {}
+  } = input;
 
   // Duration calculation
-  const totalDuration = Math.ceil((captions.at(-1)?.end || 5) * fps);
+  const totalDuration = Math.max(30, Math.ceil((captions.at(-1)?.end || 5) * fps));
   const imageCount = images.length;
   const segmentDuration = totalDuration / imageCount;
-  const overlapFrames = Math.floor(0.5 * fps);
 
-  // Current caption calculation
+  // Current caption
   const currentTime = frame / fps;
-  const currentCaption = captions.find(
-    (c) => currentTime >= c.start && currentTime <= c.end
+  const currentCaption = captions.find(c => 
+    currentTime >= c.start && currentTime <= c.end
   )?.word;
-
-  // Image animation parameters
-  const getImageProps = (index) => {
-    const sequenceStart = index * segmentDuration - overlapFrames;
-    const sequenceEnd = sequenceStart + segmentDuration + overlapFrames * 2;
-    
-    return {
-      opacity: interpolate(
-        frame,
-        [sequenceStart, sequenceStart + overlapFrames, sequenceEnd - overlapFrames, sequenceEnd],
-        [0, 1, 1, 0],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-      ),
-      scale: interpolate(
-        frame,
-        [sequenceStart, sequenceEnd],
-        [0.95, 1.05],
-        { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-      ),
-      from: Math.max(0, sequenceStart),
-      duration: segmentDuration + overlapFrames * 2,
-    };
-  };
 
   return (
     <AbsoluteFill>
       {/* Image sequences with crossfade */}
       {images.map((img, index) => {
-        const { opacity, scale, from, duration } = getImageProps(index);
+        const start = index * segmentDuration;
+        const end = start + segmentDuration;
         
         return (
-          <Sequence key={index} from={from} durationInFrames={duration}>
+          <Sequence key={img} from={start} durationInFrames={end - start}>
             <Img
               src={img}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                opacity,
-                transform: `scale(${scale})`,
+                opacity: interpolate(frame, [start, start + 30], [0, 1]),
+                transform: `scale(${interpolate(frame, [start, end], [1, 1.05])})`
               }}
             />
           </Sequence>
@@ -81,23 +52,22 @@ const RemotionComposition = () => {
       <AbsoluteFill style={{
         justifyContent: 'center',
         alignItems: 'center',
-        bottom: '10%',
-        textAlign: 'center',
-        padding: '0 20%',
+        bottom: '20%',
+        padding: '0 10%',
+        ...captionStyle
       }}>
-        <h2 className={captionStyle} style={{
-      
-          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+        <div style={{
           fontSize: '2.5em',
+          textAlign: 'center',
+          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+          lineHeight: 1.3
         }}>
           {currentCaption}
-        </h2>
+        </div>
       </AbsoluteFill>
 
-      {/* Audio handling */}
-      {audioURL && <Audio src={audioURL} />}
+      {/* Audio track */}
+      {audio && <Audio src={audio} />}
     </AbsoluteFill>
   );
 };
-
-export default RemotionComposition;
