@@ -1,26 +1,28 @@
+// server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Input validation middleware
+// Enhanced validation middleware
 const validateInput = (req, res, next) => {
   const { audio, captions, images, captionStyle } = req.body;
   
-  if (!audio || !captions || !images || !captionStyle) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+  const errors = [];
   
-  if (!Array.isArray(captions) || captions.length === 0) {
-    return res.status(400).json({ error: 'Captions must be a non-empty array' });
-  }
-  
-  if (!Array.isArray(images) || images.length === 0) {
-    return res.status(400).json({ error: 'Images must be a non-empty array' });
+  if (!audio?.match(/^(https?|data):/)) errors.push('Invalid audio URL format');
+  if (!Array.isArray(captions) || captions.length === 0) errors.push('Invalid captions format');
+  if (!Array.isArray(images) || images.length === 0) errors.push('Invalid images format');
+  if (typeof captionStyle !== 'object') errors.push('Invalid caption style format');
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
   }
   
   next();
@@ -29,7 +31,7 @@ const validateInput = (req, res, next) => {
 app.post('/trigger-render', validateInput, async (req, res) => {
   try {
     const { audio, captions, images, captionStyle } = req.body;
-
+    
     const response = await fetch(
       `https://api.github.com/repos/${process.env.GITHUB_USER}/${process.env.GITHUB_REPO}/actions/workflows/render.yml/dispatches`,
       {
@@ -37,6 +39,7 @@ app.post('/trigger-render', validateInput, async (req, res) => {
         headers: {
           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
           Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ref: 'main',
@@ -50,13 +53,26 @@ app.post('/trigger-render', validateInput, async (req, res) => {
       }
     );
 
-    if (!response.ok) throw new Error('GitHub API error');
-    res.json({ status: 'queued', id: Date.now() });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('GitHub API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody
+      });
+      throw new Error(`GitHub API Error: ${response.status} ${response.statusText}`);
+    }
+
+    res.json({ 
+      status: 'queued',
+      message: 'Render job started successfully',
+      timestamp: new Date().toISOString()
+    });
     
   } catch (err) {
-    console.error('Trigger error:', err);
-    res.status(500).json({ 
-      error: 'Failed to queue render',
+    console.error('Server Error:', err);
+    res.status(500).json({
+      error: 'Render trigger failed',
       details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }

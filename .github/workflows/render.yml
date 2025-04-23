@@ -1,3 +1,4 @@
+# .github/workflows/render.yml
 name: Video Render Pipeline
 on:
   workflow_dispatch:
@@ -15,10 +16,14 @@ on:
         description: 'JSON caption styles'
         required: true
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       
@@ -51,7 +56,7 @@ jobs:
         uses: jakejarvis/cloudinary-action@v2
         with:
           cloud: ${{ secrets.CLOUDINARY_CLOUD }}
-          key: ${{ secrets.CLOUDINARY_KEY }}
-          secret: ${{ secrets.CLOUDINARY_SECRET }}
+          key: ${{ secrets.CLOUDINARY_API_KEY }}
+          secret: ${{ secrets.CLOUDINARY_API_SECRET }}
           folder: renders
           files: out/video.mp4

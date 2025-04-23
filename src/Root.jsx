@@ -1,6 +1,6 @@
 import React from 'react';
 import { Composition } from 'remotion';
-import RemotionComposition from './RemotionComposition.jsx';
+import  { Main } from './RemotionComposition.jsx';
 
 const fps = 30;
 const width = 720;
@@ -79,7 +79,7 @@ export const RemotionRoot = () => {
   return (
     <Composition
       id="MyVideo"
-      component={RemotionComposition}
+      component={Main}
       durationInFrames={durationInFrames}
       fps={fps}
       width={width}

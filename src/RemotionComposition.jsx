@@ -1,4 +1,4 @@
-
+// src/index.js (Remotion component)
 import { AbsoluteFill, Audio, Img, Sequence, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 
 export const Main = () => {
@@ -6,34 +6,28 @@ export const Main = () => {
   const frame = useCurrentFrame();
   const input = getInputProps();
   
-  // Parse inputs directly from workflow
+  // Safe input parsing
   const {
     audio = '',
     captions = [],
     images = [],
     captionStyle = {}
-  } = input;
+  } = typeof input === 'object' ? input : {};
 
   // Duration calculation
-  const totalDuration = Math.max(30, Math.ceil((captions.at(-1)?.end || 5) * fps));
-  const imageCount = images.length;
-  const segmentDuration = totalDuration / imageCount;
-
-  // Current caption
-  const currentTime = frame / fps;
-  const currentCaption = captions.find(c => 
-    currentTime >= c.start && currentTime <= c.end
-  )?.word;
+  const totalDuration = Math.max(30, Math.ceil(
+    (captions[captions.length - 1]?.end || 5) * fps
+  ));
 
   return (
     <AbsoluteFill>
-      {/* Image sequences with crossfade */}
+      {/* Image sequences */}
       {images.map((img, index) => {
-        const start = index * segmentDuration;
-        const end = start + segmentDuration;
+        const start = (totalDuration / images.length) * index;
+        const duration = totalDuration / images.length;
         
         return (
-          <Sequence key={img} from={start} durationInFrames={end - start}>
+          <Sequence key={img} from={start} durationInFrames={duration}>
             <Img
               src={img}
               style={{
@@ -41,32 +35,36 @@ export const Main = () => {
                 height: '100%',
                 objectFit: 'cover',
                 opacity: interpolate(frame, [start, start + 30], [0, 1]),
-                transform: `scale(${interpolate(frame, [start, end], [1, 1.05])})`
+                transform: `scale(${interpolate(
+                  frame, 
+                  [start, start + duration],
+                  [1, 1.05]
+                )})`
               }}
             />
           </Sequence>
         );
       })}
 
-      {/* Caption display */}
+      {/* Captions */}
       <AbsoluteFill style={{
         justifyContent: 'center',
         alignItems: 'center',
         bottom: '20%',
-        padding: '0 10%',
         ...captionStyle
       }}>
         <div style={{
           fontSize: '2.5em',
           textAlign: 'center',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-          lineHeight: 1.3
+          textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
         }}>
-          {currentCaption}
+          {captions.find(c => 
+            (frame/fps) >= c.start && 
+            (frame/fps) <= c.end
+          )?.word}
         </div>
       </AbsoluteFill>
 
-      {/* Audio track */}
       {audio && <Audio src={audio} />}
     </AbsoluteFill>
   );
