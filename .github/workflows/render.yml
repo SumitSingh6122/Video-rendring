@@ -53,10 +53,11 @@ jobs:
             --timeout=300000
           
       - name: Upload to Cloudinary
-        uses: jakejarvis/cloudinary-action@v2
+        uses: jakejarvis/cloudinary-action@v3
         with:
           cloud: ${{ secrets.CLOUDINARY_CLOUD }}
           key: ${{ secrets.CLOUDINARY_API_KEY }}
           secret: ${{ secrets.CLOUDINARY_API_SECRET }}
           folder: renders
           files: out/video.mp4
+          upload_preset: unsigned 
