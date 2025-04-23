@@ -1,4 +1,3 @@
-# .github/workflows/render.yml
 name: Video Render Pipeline
 on:
   workflow_dispatch:
@@ -17,18 +16,14 @@ on:
         required: true
 
 permissions:
-  contents: write
-  actions: write
-  id-token: write
+  contents: read
 
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 25  # Increased timeout
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Required for action resolution
 
       - name: Install Dependencies
         run: |
@@ -55,21 +50,11 @@ jobs:
             --concurrency=2 \
             --quality=80 \
             --scale=0.8 \
-            --timeout=300000 \
-            --log=verbose
+            --timeout=300000
 
-      - name: Verify Output File
+      - name: Upload to Express Server
         run: |
-          ls -lh out/
-          [ -f out/video.mp4 ] || (echo "Missing rendered video" && exit 1)
-
-      - name: Upload to Cloudinary
-        uses: jakejarvis/cloudinary-upload-action@d002a4e # Fixed commit hash
-        with:
-          cloud_name: ${{ secrets.CLOUDINARY_CLOUD }}
-          api_key: ${{ secrets.CLOUDINARY_KEY }}
-          api_secret: ${{ secrets.CLOUDINARY_SECRET }}
-          folder: renders
-          files: out/video.mp4
-          upload_preset: unsigned
-          overwrite: true
+          curl -X POST \
+            -H "Authorization: Bearer Sumitsingh61220" \
+            -F "video=@out/video.mp4" \
+            "http://localhost:4000/upload"
