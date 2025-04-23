@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { v2 as cloudinary } from 'cloudinary';
+import puppeteer from 'puppeteer'; 
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -56,7 +57,7 @@ app.post('/api/render', validateInput, async (req, res) => {
       captions: videoData.captionJson?.length || 0,
       images: videoData.image?.length || 0
     });
-    
+    process.env.PUPPETEER_EXECUTABLE_PATH = puppeteer.executablePath(); 
 
     // Bundle and render video
     const bundleLocation = await bundle(
@@ -88,7 +89,7 @@ app.post('/api/render', validateInput, async (req, res) => {
       },
       timeoutInMilliseconds: 300000
     });
-
+  
     // Upload to Cloudinary
     const cloudinaryResponse = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload(
